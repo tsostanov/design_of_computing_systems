@@ -18,10 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usart.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "morse.h"
+#include "app.h"
 
 /* USER CODE END Includes */
 
@@ -82,16 +83,16 @@ int main(void)
 
   /* USER CODE END SysInit */
 
+  MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
-  /* LED_Init() and Button_Init() configure GPIO through MyGPIO. */
-  Morse_Init();
+  App_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  Morse_Update();
+      App_Update();
 
     /* USER CODE END WHILE */
 

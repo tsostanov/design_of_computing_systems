@@ -1,7 +1,7 @@
 #ifndef INC_BUTTON_H_
 #define INC_BUTTON_H_
 
-#include "main.h"
+#include <stdint.h>
 
 typedef enum
 {

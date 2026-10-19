@@ -18,3 +18,7 @@ tmp/
 *.bak
 *.swp
 *~
+__pycache__/
+.venv/
+*.pyc
+*.exe

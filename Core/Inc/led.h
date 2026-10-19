@@ -1,7 +1,7 @@
 #ifndef INC_LED_H_
 #define INC_LED_H_
 
-#include "main.h"
+#include <stdint.h>
 
 void LED_Init(void);
 

@@ -1,257 +1,86 @@
 #include "morse.h"
-#include "button.h"
-#include "led.h"
-
-#define MORSE_MAX_SYMBOLS       8
-
-#define MORSE_FEEDBACK_MS       200
-#define MORSE_END_PAUSE_MS      2000
-
-#define MORSE_DOT_MS            200
-#define MORSE_DASH_MS           600
-#define MORSE_SYMBOL_GAP_MS     200
-
-typedef enum
+#include "morse_codec.h"
+#include <string.h>
+static void StartLetter(MorseState *s, char c, uint32_t now)
 {
-    MORSE_DOT,
-    MORSE_DASH
-} MorseSymbol;
-
-typedef enum
+    s->current = c;
+    s->position = 0;
+    s->phase = MORSE_ON;
+    s->phase_time = now;
+    s->green = true;
+}
+void Morse_Init(MorseState *s, uint32_t now)
 {
-    MORSE_MODE_INPUT,
-    MORSE_MODE_TRANSMIT_ON,
-    MORSE_MODE_TRANSMIT_GAP
-} MorseMode;
-
-static MorseSymbol sequence[MORSE_MAX_SYMBOLS];
-
-static uint8_t sequence_length = 0;
-static uint8_t transmit_index = 0;
-
-static MorseMode mode = MORSE_MODE_INPUT;
-
-static uint32_t last_input_time = 0;
-static uint32_t transmit_time = 0;
-
-static uint8_t has_input = 0;
-
-static uint8_t feedback_active = 0;
-static uint32_t feedback_time = 0;
-
-
-static void Morse_StartFeedback(MorseSymbol symbol, uint32_t now)
+    memset(s, 0, sizeof(*s));
+    Ring_Init(&s->letters, s->letter_storage, sizeof(s->letter_storage));
+    Ring_Init(&s->results, s->result_storage, sizeof(s->result_storage));
+    s->last_input = s->phase_time = now;
+}
+bool Morse_CanEnqueue(const MorseState *s)
 {
-    LED_BicolorOff();
-
-    if (symbol == MORSE_DOT)
-    {
-        LED_YellowOn();
+    return s->phase == MORSE_IDLE || Ring_Free(&s->letters) != 0;
+}
+bool Morse_Enqueue(MorseState *s, char c, uint32_t now)
+{
+    c = Morse_Normalize(c);
+    if (!c) return false;
+    if (s->phase == MORSE_IDLE) {
+        StartLetter(s, c, now);
+        return true;
     }
-    else
-    {
-        LED_RedOn();
+    uint8_t byte = (uint8_t)c;
+    return Ring_Write(&s->letters, &byte, 1);
+}
+void Morse_Input(MorseState *s, char symbol, uint32_t now)
+{
+    if (symbol != '.' && symbol != '-') return;
+    if (s->input_length < MORSE_INPUT_CAPACITY) {
+        s->input[s->input_length++] = symbol;
+        s->input[s->input_length] = '\0';
+    } else s->input_overflow = true;
+    s->last_input = s->feedback_time = now;
+    s->feedback = symbol;
+}
+void Morse_Update(MorseState *s, uint32_t now, bool pressed)
+{
+    if (s->feedback && (uint32_t)(now - s->feedback_time) >= MORSE_FEEDBACK_MS)
+        s->feedback = 0;
+    if (pressed) s->last_input = now;
+    if (!pressed && s->input_length &&
+        (uint32_t)(now - s->last_input) >= MORSE_END_PAUSE_MS) {
+        uint8_t result = s->input_overflow ? MORSE_INPUT_OVERFLOW :
+                         (uint8_t)Morse_Decode(s->input);
+        if (!Ring_Write(&s->results, &result, 1)) ++s->lost_results;
+        s->input_length = 0;
+        s->input[0] = '\0';
+        s->input_overflow = false;
     }
-
-    feedback_time = now;
-    feedback_active = 1;
-}
-
-
-static void Morse_UpdateFeedback(uint32_t now)
-{
-    if (feedback_active &&
-        (uint32_t)(now - feedback_time) >= MORSE_FEEDBACK_MS)
-    {
-        LED_BicolorOff();
-        feedback_active = 0;
-    }
-}
-
-
-static void Morse_StartTransmission(uint32_t now)
-{
-    LED_BicolorOff();
-
-    transmit_index = 0;
-
-    mode = MORSE_MODE_TRANSMIT_ON;
-    transmit_time = now;
-
-    LED_GreenOn();
-}
-
-
-static uint32_t Morse_CurrentSignalDuration(void)
-{
-    if (sequence[transmit_index] == MORSE_DOT)
-    {
-        return MORSE_DOT_MS;
-    }
-
-    return MORSE_DASH_MS;
-}
-
-
-static void Morse_FinishTransmission(void)
-{
-    LED_GreenOff();
-
-    sequence_length = 0;
-    transmit_index = 0;
-
-    has_input = 0;
-    feedback_active = 0;
-
-    mode = MORSE_MODE_INPUT;
-
-    /*
-     * Начинаем отсчёт заново.
-     */
-    last_input_time = HAL_GetTick();
-}
-
-
-void Morse_Init(void)
-{
-    LED_Init();
-    Button_Init();
-
-    sequence_length = 0;
-    transmit_index = 0;
-
-    has_input = 0;
-    feedback_active = 0;
-
-    mode = MORSE_MODE_INPUT;
-
-    last_input_time = HAL_GetTick();
-    transmit_time = HAL_GetTick();
-}
-
-
-void Morse_Update(void)
-{
-    uint32_t now = HAL_GetTick();
-
-    ButtonEvent event = Button_Update();
-
-    Morse_UpdateFeedback(now);
-
-    /*
-     * Пока пользователь держит кнопку,
-     * это НЕ считается паузой между символами.
-     *
-     * Поэтому постоянно переносим начало отсчёта
-     * двухсекундной паузы.
-     */
-    if (mode == MORSE_MODE_INPUT &&
-        Button_IsPressed())
-    {
-        last_input_time = now;
-    }
-
-
-    if (mode == MORSE_MODE_INPUT)
-    {
-        /*
-         * Короткое нажатие = точка.
-         */
-        if (event == BUTTON_EVENT_SHORT)
-        {
-            if (sequence_length < MORSE_MAX_SYMBOLS)
-            {
-                sequence[sequence_length] = MORSE_DOT;
-                sequence_length++;
-
-                has_input = 1;
-                last_input_time = now;
-
-                Morse_StartFeedback(
-                    MORSE_DOT,
-                    now
-                );
-            }
+    uint32_t elapsed = (uint32_t)(now - s->phase_time);
+    const char *code = Morse_Encode(s->current);
+    switch (s->phase) {
+    case MORSE_ON:
+        if (elapsed >= (code[s->position] == '.' ? MORSE_DOT_MS : MORSE_DASH_MS)) {
+            s->green = false;
+            s->phase_time = now;
+            if (code[++s->position]) s->phase = MORSE_GAP;
+            else { s->phase = MORSE_LETTER_GAP; s->current = 0; }
         }
-
-        /*
-         * Длинное нажатие = тире.
-         */
-        else if (event == BUTTON_EVENT_LONG)
-        {
-            if (sequence_length < MORSE_MAX_SYMBOLS)
-            {
-                sequence[sequence_length] = MORSE_DASH;
-                sequence_length++;
-
-                has_input = 1;
-                last_input_time = now;
-
-                Morse_StartFeedback(
-                    MORSE_DASH,
-                    now
-                );
-            }
+        break;
+    case MORSE_GAP:
+        if (elapsed >= MORSE_SYMBOL_GAP_MS) {
+            s->green = true;
+            s->phase = MORSE_ON;
+            s->phase_time = now;
         }
-
-        /*
-         * Передачу начинаем ТОЛЬКО:
-         *
-         * 1. если уже есть введённые символы;
-         * 2. кнопка сейчас НЕ нажата;
-         * 3. после последнего ввода прошло 2 секунды.
-         */
-        if (has_input &&
-            !Button_IsPressed() &&
-            (uint32_t)(now - last_input_time) >= MORSE_END_PAUSE_MS)
-        {
-            Morse_StartTransmission(now);
+        break;
+    case MORSE_LETTER_GAP:
+        if (elapsed >= MORSE_LETTER_GAP_MS) {
+            uint8_t c;
+            if (Ring_Read(&s->letters, &c)) StartLetter(s, (char)c, now);
+            else s->phase = MORSE_IDLE;
         }
-    }
-
-
-    else if (mode == MORSE_MODE_TRANSMIT_ON)
-    {
-        uint32_t duration =
-            Morse_CurrentSignalDuration();
-
-        if ((uint32_t)(now - transmit_time) >= duration)
-        {
-            LED_GreenOff();
-
-            transmit_time = now;
-
-            /*
-             * Если это был последний символ,
-             * заканчиваем передачу.
-             */
-            if (transmit_index + 1 >= sequence_length)
-            {
-                Morse_FinishTransmission();
-            }
-            else
-            {
-                /*
-                 * Иначе ждём промежуток
-                 * перед следующим символом.
-                 */
-                mode = MORSE_MODE_TRANSMIT_GAP;
-            }
-        }
-    }
-
-
-    else if (mode == MORSE_MODE_TRANSMIT_GAP)
-    {
-        if ((uint32_t)(now - transmit_time) >= MORSE_SYMBOL_GAP_MS)
-        {
-            transmit_index++;
-
-            LED_GreenOn();
-
-            transmit_time = now;
-
-            mode = MORSE_MODE_TRANSMIT_ON;
-        }
+        break;
+    case MORSE_IDLE:
+        break;
     }
 }

@@ -1,11 +1,10 @@
 #include "button.h"
 #include "my_gpio.h"
+#include "lab_config.h"
 
 #define BUTTON_PORT            GPIOC
 #define BUTTON_PIN             (1U << 15)
 
-#define BUTTON_DEBOUNCE_MS     30
-#define BUTTON_LONG_PRESS_MS   600
 
 static uint8_t raw_state;
 static uint8_t stable_state;
