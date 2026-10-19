@@ -1,0 +1,20 @@
+# Build output
+Debug/
+Release/
+*.o
+*.d
+*.su
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+
+# Local IDE state and temporary files
+.metadata/
+.mxproject
+tmp/
+*.log
+*.bak
+*.swp
+*~
