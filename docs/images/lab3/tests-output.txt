@@ -1,0 +1,24 @@
+LAB 3: ELECTRONIC LEVEL
+Command: python tests/run_level_tests.py
+
+PASS sensor identity, register configuration, signed conversion, data-ready/errors
+PASS pointer directions, perpendicularity, flat/invalid samples
+PASS OLED reset timing, expander preservation, page snapshot, retry
+PASS exact protocol replies, mode validation and framebuffer rendering
+PASS application streaming, CRLF, commands, corrupt input, RX overflow, stale sensor, OLED failure
+PASS 32-bit tick rollover
+test_ping_and_mode_require_board_confirmation (test_level_client.GuiTests.test_ping_and_mode_require_board_confirmation) ... ok
+test_sensor_error_does_not_show_stale_values (test_level_client.GuiTests.test_sensor_error_does_not_show_stale_values) ... ok
+test_bad_frames (test_level_client.ProtocolTests.test_bad_frames) ... ok
+test_exact_firmware_data (test_level_client.ProtocolTests.test_exact_firmware_data) ... ok
+test_fragmentation_crlf (test_level_client.ProtocolTests.test_fragmentation_crlf) ... ok
+test_resynchronizes_after_overlong_and_non_ascii (test_level_client.ProtocolTests.test_resynchronizes_after_overlong_and_non_ascii) ... ok
+test_partial_writes_and_log_has_every_actual_byte (test_level_client.TransportTests.test_partial_writes_and_log_has_every_actual_byte) ... ok
+test_zero_write_keeps_pending_and_capacity_is_bounded (test_level_client.TransportTests.test_zero_write_keeps_pending_and_capacity_is_bounded) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.247s
+
+OK
+
+Exit code: 0
