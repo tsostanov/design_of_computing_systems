@@ -12,11 +12,11 @@
 
 Рисунок 2. Окно клиента в режиме HORIZ.
 
-![Режим HORIZ](images/lab3/02-client-horiz-demo.png)
+![Режим HORIZ](images/lab3/02-client-horiz.png)
 
 Рисунок 3. Окно клиента в режиме ARROW.
 
-![Режим ARROW](images/lab3/03-client-arrow-demo.png)
+![Режим ARROW](images/lab3/03-client-arrow.png)
 
 ## Тесты
 

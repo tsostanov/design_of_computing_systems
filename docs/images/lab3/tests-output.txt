@@ -1,4 +1,3 @@
-LAB 3: ELECTRONIC LEVEL
 Command: python tests/run_level_tests.py
 
 PASS sensor identity, register configuration, signed conversion, data-ready/errors
@@ -17,7 +16,7 @@ test_partial_writes_and_log_has_every_actual_byte (test_level_client.TransportTe
 test_zero_write_keeps_pending_and_capacity_is_bounded (test_level_client.TransportTests.test_zero_write_keeps_pending_and_capacity_is_bounded) ... ok
 
 ----------------------------------------------------------------------
-Ran 8 tests in 0.247s
+Ran 8 tests in 0.228s
 
 OK
 
