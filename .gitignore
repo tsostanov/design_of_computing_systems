@@ -22,3 +22,6 @@ __pycache__/
 .venv/
 *.pyc
 *.exe
+
+# Local UART session log
+level-uart.jsonl

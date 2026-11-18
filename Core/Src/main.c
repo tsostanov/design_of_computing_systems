@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app.h"
+#include "lab_select.h"
+#include "level_app.h"
 
 /* USER CODE END Includes */
 
@@ -85,14 +87,22 @@ int main(void)
 
   MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
+#if LAB_NUMBER == 3
+  LevelApp_Init();
+#else
   App_Init();
+#endif
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+#if LAB_NUMBER == 3
+      LevelApp_Update();
+#else
       App_Update();
+#endif
 
     /* USER CODE END WHILE */
 
